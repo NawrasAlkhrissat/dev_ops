@@ -1,0 +1,16 @@
+-- data/init.sql
+CREATE DATABASE IF NOT EXISTS tickets CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+USE tickets;
+
+CREATE TABLE IF NOT EXISTS tickets (
+                                     id INT AUTO_INCREMENT PRIMARY KEY,
+                                     name VARCHAR(100) NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  available INT NOT NULL DEFAULT 10
+  );
+
+INSERT INTO tickets (name, price, available) VALUES
+                                               ('Rock Concert 2025', 49.99, 5),
+                                               ('Jazz Night', 35.00, 15),
+                                               ('Electronic Festival', 69.99, 3);

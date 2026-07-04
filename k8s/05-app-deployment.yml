@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticketshop-app
+  namespace: ticketshop
+  labels:
+    app: ticketshop
+    tier: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ticketshop
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: ticketshop
+        tier: frontend
+    spec:
+      containers:
+        - name: app
+          image: ticketshop-app:latest
+          imagePullPolicy: Never 
+          env:
+            - name: DB_HOST
+              value: "ticketshop-db"
+            - name: DB_USER
+              value: "ticketuser"
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: ticketshop-db-secret
+                  key: db-password
+            - name: DB_NAME
+              value: "tickets"
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ticketshop-app
+  namespace: ticketshop
+spec:
+  type: LoadBalancer
+  selector:
+    app: ticketshop
+    tier: frontend
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 80
