@@ -20,6 +20,36 @@ DB_NAME: 'tickets'
 # -- Platzhalter für eigene Dokumentation --
 
 # Architektur 
+<h3>Architekturübersicht (Schichtenmodell)</h3>
+<p>Die Architektur dieses Projekts orientiert sich an dem im Kurs behandelten Abstraktionsmodell moderner Infrastrukturen. Die Verantwortlichkeiten sind klar getrennt:</p>
+
+<table>
+  <tr>
+    <th>Schicht</th>
+    <th>Tool</th>
+    <th>Funktion im Projekt</th>
+  </tr>
+  <tr>
+    <td><strong>Prozessautomatisierung</strong></td>
+    <td>Ansible</td>
+    <td>Dient als Control Node zur Ausführung des Playbooks. Übernimmt das automatisierte Bauen des Container-Images und wendet die Kubernetes-Manifeste deklarativ an (Idempotenz).</td>
+  </tr>
+  <tr>
+    <td><strong>Orchestrierung</strong></td>
+    <td>Kubernetes (Minikube)</td>
+    <td>Verwaltet die Workloads im Cluster. Nutzt Deployments für Ausfallsicherheit und Services (LoadBalancer) für das Netzwerk-Routing.</td>
+  </tr>
+  <tr>
+    <td><strong>App-Isolation</strong></td>
+    <td>Docker</td>
+    <td>Kapselt die PHP-Webanwendung und ihre Abhängigkeiten in einem reproduzierbaren Image (Dockerfile).</td>
+  </tr>
+  <tr>
+    <td><strong>Datenhaltung (Persistenz)</strong></td>
+    <td>K8s PVC & ConfigMap</td>
+    <td>Sichert die MySQL-Datenbank gegen Container-Neustarts ab. Initialisierung erfolgt über eine injizierte ConfigMap (init.sql).</td>
+  </tr>
+</table>
 
 ggf. passt hier ein Schaubild Ihrer Container-Architektur hin 
 --> z. B. mit https://app.diagrams.net/

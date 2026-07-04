@@ -1,0 +1,18 @@
+---
+- name: Automatisches Deployment des Ticketshops
+  hosts: vm_node
+  gather_facts: false
+
+  tasks:
+    - name: Minikube Docker-Umgebung laden und Image bauen
+      shell: |
+        eval $(minikube docker-env)
+        docker build -t ticketshop-app:latest .
+      args:
+        chdir: "{{ playbook_dir }}/../"
+        executable: /bin/bash
+
+    - name: Kubernetes Ressourcen deklarativ anwenden
+      shell: kubectl apply -f k8s/
+      args:
+        chdir: "{{ playbook_dir }}/../"
