@@ -1,279 +1,87 @@
-# Dieses Projekt ist ein minimaler, aber funktionstüchtiger Ticketshop, der als Gerüst für das Projekt unseres DevOps-Moduls genutzt werden kann.
+# Ticketshop – DevOps & Containerisierung Projekt
 
-Der Shop umfasst: 
-Eine Liste der Konzert-Tickets
-Dynamische Daten aus der MySQL-Datenbank
-Persistente Speicherung (auch nach Neustart)
-
-<img src="Deployment.png" width="400" alt="Ticketshop Ansicht">
-
-# DB Daten 
- 
-DB_HOST: localhost -- Achtung: im Zuge Ihres Deployments anpassen (/ticketshop/webshop/db.php)
-
-DB_USER: 'ticketuser'
-
-DB_PASS: 'ticketpass'
-
-DB_NAME: 'tickets'
-
-# -- Platzhalter für eigene Dokumentation --
-
-### Wahl der Programmiersprache & Laufzeitumgebung
-Für den Ticketshop wurde **PHP** in Kombination mit einer **MySQL-Datenbank** gewählt. 
-Grund dafür ist die einfache und ressourcenschonende Ausführung von PHP-Skripten innerhalb eines Apache-Webservers. Die Laufzeitumgebung wird durch das offizielle `php:8.2-apache` Docker-Image bereitgestellt, welches eine schnelle Bereitstellung und native Unterstützung für die benötigte PDO-MySQL-Erweiterung bietet.
-
-### Begründung der Persistenzstrategie
-Um sicherzustellen, dass die Ticketdaten (Käufe, Verfügbarkeiten) Container-Neustarts oder Pod-Ausfälle überstehen, wurde ein **PersistentVolumeClaim (PVC)** in Kubernetes implementiert. 
-Diese Strategie entkoppelt den Lebenszyklus der Datenbank-Daten vom Lebenszyklus des Datenbank-Containers. Zusätzlich wird eine **ConfigMap** genutzt, um das initialisierte Datenbankschema (`init.sql`) beim ersten Start reproduzierbar bereitzustellen, ohne die Daten in das Image hart zu kodieren.
-
-# Architektur 
-<h3>Architekturübersicht (Schichtenmodell)</h3>
-<p>Die Architektur dieses Projekts orientiert sich an dem im Kurs behandelten Abstraktionsmodell moderner Infrastrukturen. Die Verantwortlichkeiten sind klar getrennt:</p>
-
-<table>
-  <tr>
-    <th>Schicht</th>
-    <th>Tool</th>
-    <th>Funktion im Projekt</th>
-  </tr>
-  <tr>
-    <td><strong>Prozessautomatisierung</strong></td>
-    <td>Ansible</td>
-    <td>Dient als Control Node zur Ausführung des Playbooks. Übernimmt das automatisierte Bauen des Container-Images und wendet die Kubernetes-Manifeste deklarativ an (Idempotenz).</td>
-  </tr>
-  <tr>
-    <td><strong>Orchestrierung</strong></td>
-    <td>Kubernetes (Minikube)</td>
-    <td>Verwaltet die Workloads im Cluster. Nutzt Deployments für Ausfallsicherheit und Services (LoadBalancer) für das Netzwerk-Routing.</td>
-  </tr>
-  <tr>
-    <td><strong>App-Isolation</strong></td>
-    <td>Docker</td>
-    <td>Kapselt die PHP-Webanwendung und ihre Abhängigkeiten in einem reproduzierbaren Image (Dockerfile).</td>
-  </tr>
-  <tr>
-    <td><strong>Datenhaltung (Persistenz)</strong></td>
-    <td>K8s PVC & ConfigMap</td>
-    <td>Sichert die MySQL-Datenbank gegen Container-Neustarts ab. Initialisierung erfolgt über eine injizierte ConfigMap (init.sql).</td>
-  </tr>
-</table>
-
-ggf. passt hier ein Schaubild Ihrer Container-Architektur hin 
---> z. B. mit https://app.diagrams.net/
-
-# Ticketshop – Deployment Anleitung
-
-Diese Anleitung beschreibt Schritt für Schritt, wie der Ticketshop auf einer lokalen VM
-mit Minikube (Kubernetes) bereitgestellt wird.
+Dieses Projekt ist ein minimaler, aber funktionstüchtiger Ticketshop, der als Projektabgabe für das WPK-Modul "DevOps zu Microservices" entwickelt wurde.
 
 ---
 
-## Voraussetzungen
+## 1. Projektdokumentation
 
+### 1.1 Beschreibung der umgesetzten Anwendung
+Der Webshop ist eine containerisierte Ticketverwaltung. Er ermöglicht es Benutzern, verfügbare Konzerttickets für verschiedene Events einzusehen. Die Anwendung wurde fachlich einfach gehalten, um den Fokus auf eine technisch saubere Bereitstellung, Orchestrierung und Automatisierung zu legen.
 
-- Folgende Tools müssen installiert sein:
-  - `docker`
-  - `minikube`
-  - `kubectl`
-- Der Deployment-User (z.B. `devops`) muss Mitglied der **docker-Gruppe** sein
+### 1.2 Definition des Funktionsumfangs (Minimalziel)
+Der umgesetzte Funktionsumfang umfasst:
+* Anzeige einer übersichtlichen Liste von Konzert-Tickets (inkl. Eventname und Preis).
+* Dynamische Datenabfrage und -anzeige aus einer relationalen Datenbank.
+* Persistente Speicherung der Ticket-Daten, sodass Käufe und Verfügbarkeiten auch nach einem Container- oder Pod-Neustart erhalten bleiben.
 
----
+### 1.3 Wahl der Programmiersprache & Laufzeitumgebung
+Für die Umsetzung des Ticketshops wurde **PHP** in Kombination mit einer **MySQL-Datenbank** gewählt. 
+**Grund:** PHP ermöglicht eine einfache und ressourcenschonende Ausführung von Skripten. Als Laufzeitumgebung wird das offizielle `php:8.2-apache` Docker-Image genutzt. Dies ermöglicht eine schnelle Bereitstellung mit integriertem Webserver und nativer Unterstützung für die PDO-MySQL-Erweiterung, ohne zusätzliche Abhängigkeiten auf dem Host-System installieren zu müssen.
 
-## Projektstruktur
+### 1.4 Grobe Architekturübersicht (Schichtenmodell)
+Die Architektur orientiert sich am Schichtenmodell moderner IT-Infrastrukturen:
 
-```
-ticketshop/
-├── Dockerfile
-├── docker-compose.yml       ← Nur für lokalen Test ohne K8s (nicht bereitgestellt)
-├── stop.sh                  ← Zum sauberen Herunterfahren (nicht bereitgestellt)
-├── webpage/                 ← PHP-Anwendung (im Repository zu finden!)
-│   ├── index.php
-│   └── db.php
-├── css/
-│   └── style.css
-├── data/
-│   └── init.sql             ← Datenbankschema und Testdaten (im Repo zu finden!)
-├── ansible/                 ← Ansible-Deployment (nicht im Repo bereitgestellt)
-└── k8s/                     ← Kubernetes-Manifeste (nicht im Repo bereitgestellt)
-    ├── 00-namespace.yml
-    ├── 01-secret.yml
-    ├── 02-configmap.yml
-    ├── 03-pvc.yml
-    ├── 04-db-deployment.yml
-    └── 05-app-deployment.yml
-```
+| Schicht | Tool | Funktion im Projekt |
+| :--- | :--- | :--- |
+| **Prozessautomatisierung** | Ansible | Fungiert als Control Node (Infrastructure-as-Code). Übernimmt den automatisierten Build-Prozess und wendet die K8s-Manifeste an. |
+| **Orchestrierung** | Kubernetes | Verwaltet die Workloads im Cluster (Minikube). Nutzt Deployments für Ausfallsicherheit und Services (LoadBalancer) für das externe Netzwerk-Routing. |
+| **App-Isolation** | Docker | Kapselt die PHP-Webanwendung und ihre Abhängigkeiten in einem reproduzierbaren Image (`Dockerfile`). |
+| **Datenhaltung** | K8s PVC & ConfigMap | Sichert die Datenbankzustände persistent ab und injiziert Startkonfigurationen. |
+
+### 1.5 Begründung der gewählten Persistenzstrategie
+Um sicherzustellen, dass die Ticketdaten Container-Neustarts überstehen, wurde ein **PersistentVolumeClaim (PVC)** in Kubernetes implementiert. 
+**Begründung:** Container sind flüchtig (ephemeral). Durch den PVC wird der Lebenszyklus der persistenten Daten strikt vom Lebenszyklus des Datenbank-Containers entkoppelt. Zudem wird eine **ConfigMap** genutzt, um das initialisierte Datenbankschema (`init.sql`) beim allerersten Start deklarativ und reproduzierbar in den Container zu injizieren.
 
 ---
 
-## Schritt 1 – Projekt entpacken
+## 2. Deployment-Anleitung (Build- und Run-Schritte)
 
-```bash
-unzip ticketshop-deployment.zip
-cd ticketshop
-```
+### 2.1 Automatisches Deployment (Ansible)
+Das Projekt nutzt Infrastructure-as-Code. Um das gesamte Setup automatisiert auszuführen, nutzen Sie das Ansible-Playbook:
 
----
+~~~bash
+ansible-playbook -i ansible/hosts.ini ansible/deploy.yml
+~~~
+*(Hinweis: Minikube muss hierfür bereits laufen)*
 
-## Schritt 2 – Minikube starten
+### 2.2 Manuelles Deployment (Schritt-für-Schritt)
 
-Minikube darf **nicht als root** gestartet werden. Als normaler User ausführen:
-
-```bash
+**Schritt 1: Minikube starten** (als normaler User `devops`, nicht root)
+~~~bash
 minikube start --driver=docker --cpus=2 --memory=2048
-```
+~~~
 
-Läuft Minikube bereits, kann dieser Schritt übersprungen werden. Status prüfen mit:
-
-```bash
-minikube status
-```
-
----
-
-## Schritt 3 – Docker-Image bauen
-
-Das Image muss direkt in Minikubes internem Docker-Daemon gebaut werden,
-damit Kubernetes es findet (kein externer Registry-Pull nötig).
-
-```bash
-# Minikube-Docker-Umgebung aktivieren
+**Schritt 2: Docker-Image bauen** (im Minikube-Daemon)
+~~~bash
 eval $(minikube docker-env)
-
-# Image bauen
 docker build -t ticketshop-app:latest .
-
-# Umgebung zurücksetzen
 eval $(minikube docker-env --unset)
-```
+~~~
 
----
-
-## Schritt 4 – Kubernetes-Ressourcen anlegen (Ressourcen nicht im Repository bereitgestellt)
-
-```bash
+**Schritt 3: Kubernetes-Ressourcen anwenden**
+~~~bash
 kubectl apply -f k8s/
-```
+~~~
 
-Erwartete Ausgabe:
-
-```
-namespace/ticketshop created
-secret/ticketshop-db-secret created
-configmap/ticketshop-db-init created
-persistentvolumeclaim/ticketshop-db-pvc created
-deployment.apps/ticketshop-db created
-service/ticketshop-db created
-deployment.apps/ticketshop-app created
-service/ticketshop-app created
-```
-
----
-
-## Schritt 5 – Auf Pods warten
-
-```bash
-# Datenbank abwarten (bis zu 120 Sekunden)
-kubectl wait --for=condition=ready pod \
-  -l app=ticketshop,tier=database -n ticketshop --timeout=120s
-
-# App abwarten (bis zu 60 Sekunden)
-kubectl wait --for=condition=ready pod \
-  -l app=ticketshop,tier=frontend -n ticketshop --timeout=60s
-```
-
-Alle laufenden Pods anzeigen:
-
-```bash
-kubectl get pods -n ticketshop
-```
-
----
-
-## Schritt 6 – minikube tunnel starten
-
-Der `ticketshop-app` Service ist vom Typ `LoadBalancer`. Damit er eine
-externe IP bekommt und über `localhost:8080` erreichbar ist, muss
-`minikube tunnel` laufen.
-
-> **Wichtig:** Der Tunnel braucht root-Rechte für die Netzwerk-Routen,
-> gleichzeitig aber den Minikube-Kontext des normalen Users.
-> Deshalb das Flag `-E` (Umgebungsvariablen beibehalten) verwenden:
-
-```bash
-# Eventuell noch laufenden alten Tunnel beenden
-sudo pkill -f "minikube tunnel" 2>/dev/null; sleep 2
-
-# Tunnel starten (läuft im Vordergrund – Terminal offen lassen!)
+**Schritt 4: Auf Pods warten & Tunnel starten**
+~~~bash
+kubectl wait --for=condition=ready pod -l app=ticketshop,tier=database -n ticketshop --timeout=120s
+kubectl wait --for=condition=ready pod -l app=ticketshop,tier=frontend -n ticketshop --timeout=60s
+~~~
+Da der Web-Service den Typ `LoadBalancer` nutzt, muss der Tunnel im Vordergrund gestartet werden (Terminal offen lassen):
+~~~bash
 sudo -E -u devops minikube tunnel
-```
+~~~
 
-Der Tunnel muss **während des Betriebs offen bleiben**. Am besten in einem
-eigenen Terminal-Fenster oder per `tmux`/`screen` laufen lassen.
-
----
-
-## Schritt 7 – Erreichbarkeit prüfen
-
-In einem zweiten Terminal:
-
-```bash
-kubectl get svc -n ticketshop
-```
-
-Sobald bei `ticketshop-app` unter `EXTERNAL-IP` der Wert `127.0.0.1` erscheint,
-ist die Anwendung erreichbar:
-
-```
-NAME             TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)
-ticketshop-app   LoadBalancer   10.108.83.178   127.0.0.1     8080:...
-```
-
-→ **http://127.0.0.1:8080** im Browser öffnen.
+**Schritt 5: Erreichbarkeit prüfen**
+Die Anwendung ist nun unter **http://127.0.0.1:8080** im Browser erreichbar.
 
 ---
 
-
-
-## Nützliche Befehle
-
-```bash
-# Alle Ressourcen im Namespace anzeigen
-kubectl get all -n ticketshop
-
-# Logs der App-Pods
-kubectl logs -l tier=frontend -n ticketshop
-
-# Logs der Datenbank
-kubectl logs -l tier=database -n ticketshop
-
-# Live-Logs verfolgen
-kubectl logs -f -l tier=frontend -n ticketshop
-
-# In einen App-Pod einloggen
-kubectl exec -it deploy/ticketshop-app -n ticketshop -- bash
-```
-
----
-
-## Häufige Fehler
-
-**`Der Treiber "docker" sollte nicht mit Root Privilegien gestartet werden`**
-Minikube nicht als root starten. Als normaler User (`devops`) ausführen.
-
-**`EXTERNAL-IP` bleibt auf `<pending>`**
-Der Tunnel läuft nicht oder hat keine root-Rechte für die Netzwerk-Routen.
-Lösung: `sudo pkill -f "minikube tunnel"` und dann `sudo -E -u devops minikube tunnel`.
-
-**`TUNNEL_ALREADY_RUNNING`**
-Ein alter Tunnel-Prozess ist noch aktiv.
-Lösung: `sudo pkill -f "minikube tunnel"`, kurz warten, dann neu starten.
-
-**`couldn't get current server API group list: connection refused`**
-Minikube läuft nicht. Lösung: `minikube start --driver=docker`
-
-**Image wird nicht gefunden (`ErrImagePull` / `ImagePullBackOff`)**
-Das Image wurde nicht im Minikube-Daemon gebaut. Schritte 3 wiederholen –
-darauf achten, dass `eval $(minikube docker-env)` vor `docker build` ausgeführt wird.
-
-
+## 3. Projektdaten & Umgebungsvariablen
+Die Datenbank-Verbindungsdaten werden über das Kubernetes `Secret` sicher an den Pod übergeben (siehe `01-secret.yml` & `05-app-deployment.yml`):
+* **DB_HOST**: ticketshop-db
+* **DB_USER**: ticketuser
+* **DB_PASS**: ticketpass
+* **DB_NAME**: tickets
