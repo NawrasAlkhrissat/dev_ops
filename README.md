@@ -19,6 +19,14 @@ DB_NAME: 'tickets'
 
 # -- Platzhalter für eigene Dokumentation --
 
+### Wahl der Programmiersprache & Laufzeitumgebung
+Für den Ticketshop wurde **PHP** in Kombination mit einer **MySQL-Datenbank** gewählt. 
+Grund dafür ist die einfache und ressourcenschonende Ausführung von PHP-Skripten innerhalb eines Apache-Webservers. Die Laufzeitumgebung wird durch das offizielle `php:8.2-apache` Docker-Image bereitgestellt, welches eine schnelle Bereitstellung und native Unterstützung für die benötigte PDO-MySQL-Erweiterung bietet.
+
+### Begründung der Persistenzstrategie
+Um sicherzustellen, dass die Ticketdaten (Käufe, Verfügbarkeiten) Container-Neustarts oder Pod-Ausfälle überstehen, wurde ein **PersistentVolumeClaim (PVC)** in Kubernetes implementiert. 
+Diese Strategie entkoppelt den Lebenszyklus der Datenbank-Daten vom Lebenszyklus des Datenbank-Containers. Zusätzlich wird eine **ConfigMap** genutzt, um das initialisierte Datenbankschema (`init.sql`) beim ersten Start reproduzierbar bereitzustellen, ohne die Daten in das Image hart zu kodieren.
+
 # Architektur 
 <h3>Architekturübersicht (Schichtenmodell)</h3>
 <p>Die Architektur dieses Projekts orientiert sich an dem im Kurs behandelten Abstraktionsmodell moderner Infrastrukturen. Die Verantwortlichkeiten sind klar getrennt:</p>
